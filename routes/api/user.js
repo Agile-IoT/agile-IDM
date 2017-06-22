@@ -2,6 +2,7 @@ var passport = require('passport');
 var express = require('express');
 var clone = require('clone');
 var bodyParser = require('body-parser');
+var createError = require('http-errors');
 var ids = require('../../lib/util/id');
 var idmcore;
 var saltrounds = 10;
@@ -122,5 +123,63 @@ function RouterApi(tokenConf, idmcore, router, strategies) {
         });
 
     });
+
+  //returns  or 401 or 403 if token is invalid or the old password doesn't match, 500 in case of unexpected situations
+  //curl -H "Content-type: application/json" -H "Authorization: bearer $TOKEN" -X PUT -d '{"old_password":"a", "new_password":"secret22"}' 'http://localhost:3000/api/v1/user/password'  router.route('/user/password').put(
+  router.route('/user/password').put(
+    passport.authenticate('agile-bearer', {
+      session: false
+    }),
+    bodyParser.json(),
+    function (req, res) {
+      if (!req.body.old_password || !req.body.new_password) {
+        res.statusCode = 400;
+        return res.json({
+          "error": "provide old_password and new_password"
+        });
+      } else {
+
+        var user = req.body;
+        var entity_type = "/user";
+        idmcore.readEntity(req.user, req.user.id, entity_type)
+          .then(function (user) {
+            bcrypt.compare(req.body.old_password, user.password, function (err, result) {
+              if (err || !result) {
+                console.log("wrong password");
+                res.statusCode = 403;
+                res.json({
+                  "error": "wrong password"
+                });
+              } else {
+                bcrypt.hash(req.body.new_password, saltrounds, function (err, hash) {
+                  //for consistency in owner policy lock evaluation, users own themselves.
+                  idmcore.setEntityAttribute(req.user, req.user.id, entity_type, "password", hash)
+                    .then(function (read) {
+                      res.statusCode = 200
+                      res.json({
+                        "result": "password updated"
+                      });
+                    }).catch(function (error) {
+                      console.log("error when posting entity " + error);
+                      res.statusCode = error.statusCode || 500;
+                      res.json({
+                        "error": error.message
+                      });
+                    });
+                });
+              }
+            });
+
+          }).catch(function (error) {
+            console.log("error when updating user's password " + error);
+            res.statusCode = error.statusCode || 500;
+            res.json({
+              "error": error.message
+            });
+          });
+
+      }
+    }
+  );
 }
 module.exports = RouterApi;
