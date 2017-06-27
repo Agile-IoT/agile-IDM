@@ -220,7 +220,7 @@ module.exports = {
           }
         ]
       },
-      "device": {
+      "sensor": {
         "credentials": {
           flows: [
             // all properties can be read by everyone
@@ -275,7 +275,7 @@ module.exports = {
     }
   },
   "schema-validation": [{
-    "id": "/device",
+    "id": "/sensor",
     "additionalProperties": false,
     "type": "object",
     "properties": {
