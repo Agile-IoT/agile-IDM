@@ -21,6 +21,59 @@ function RouterApi(tokenConf, idmcore, router, strategies) {
       return (value.substr(0, n));
   });
 
+  var updatePasswordWithCheck = function (idmcore, auth_result, user_update_id, entity_type, old_password, new_password) {
+    return new Promise(function (resolve, reject) {
+      idmcore.readEntity(auth_result, user_update_id, entity_type)
+        .then(function (user) {
+          bcrypt.compare(old_password, user.password, function (err, result) {
+            if (err || !result) {
+              console.log("wrong password");
+              reject(createError(403, "wrong password"));
+            } else {
+              bcrypt.hash(new_password, saltrounds, function (err, hash) {
+                //for consistency in owner policy lock evaluation, users own themselves.
+                idmcore.setEntityAttribute(auth_result, user_update_id, entity_type, "password", hash)
+                  .then(function (read) {
+                    resolve({
+                      "result": "password updated"
+                    });
+                  }).catch(function (error) {
+                    console.log("error when posting entity " + error);
+                    reject(createError(error.statusCode || 500, error.message || "error when posting entity " + error));
+                  });
+              });
+            }
+          });
+        }).catch(function (error) {
+          console.log("error when changing password " + error);
+          reject(createError(error.statusCode || 500, error.message || "error when posting entity " + error));
+        });
+    });
+  }
+
+  var updatePasswordWithoutCheck = function (idmcore, auth_result, user_update_id, entity_type, new_password) {
+    return new Promise(function (resolve, reject) {
+      idmcore.readEntity(auth_result, user_update_id, entity_type)
+        .then(function (user) {
+          bcrypt.hash(new_password, saltrounds, function (err, hash) {
+            //for consistency in owner policy lock evaluation, users own themselves.
+            idmcore.setEntityAttribute(auth_result, user_update_id, entity_type, "password", hash)
+              .then(function (read) {
+                resolve({
+                  "result": "password updated"
+                });
+              }).catch(function (error) {
+                console.log("error when posting entity " + error);
+                reject(createError(error.statusCode || 500, error.message || "error when posting entity " + error));
+              });
+          });
+
+        }).catch(function (error) {
+          console.log("error when changing password " + error);
+          reject(createError(error.statusCode || 500, error.message || "error when posting entity " + error));
+        });
+    });
+  }
   //returns 400 if a field of the body is missing or if wrong authentication type is provided. returns 200 and the entity, or 401 or 403, in case of security issues, 422 in case a user is attempted to be created through this API, or 409 if entity already exists, 500 in case of unexpected situations
   //curl -H "Content-type: application/json" -H "Authorization: bearer HeTxINCpXD0U6g27D7AIxc2CvfFNaZ" -X POST -d '{"user_name":"a", "auth_type":"github"}' 'http://localhost:3000/api/v1/user'
   router.route('/user/').post(
@@ -141,35 +194,14 @@ function RouterApi(tokenConf, idmcore, router, strategies) {
 
         var user = req.body;
         var entity_type = "/user";
-        idmcore.readEntity(req.user, req.user.id, entity_type)
-          .then(function (user) {
-            bcrypt.compare(req.body.old_password, user.password, function (err, result) {
-              if (err || !result) {
-                console.log("wrong password");
-                res.statusCode = 403;
-                res.json({
-                  "error": "wrong password"
-                });
-              } else {
-                bcrypt.hash(req.body.new_password, saltrounds, function (err, hash) {
-                  //for consistency in owner policy lock evaluation, users own themselves.
-                  idmcore.setEntityAttribute(req.user, req.user.id, entity_type, "password", hash)
-                    .then(function (read) {
-                      res.statusCode = 200
-                      res.json({
-                        "result": "password updated"
-                      });
-                    }).catch(function (error) {
-                      console.log("error when posting entity " + error);
-                      res.statusCode = error.statusCode || 500;
-                      res.json({
-                        "error": error.message
-                      });
-                    });
-                });
-              }
+        var user_update_id = req.user.id;
+        var auth_result = req.user;
+        updatePasswordWithCheck(idmcore, auth_result, user_update_id, entity_type, req.body.old_password, req.body.new_password)
+          .then(function (result) {
+            res.statusCode = 200;
+            res.json(result || {
+              "result": "password updated"
             });
-
           }).catch(function (error) {
             console.log("error when updating user's password " + error);
             res.statusCode = error.statusCode || 500;
@@ -177,7 +209,42 @@ function RouterApi(tokenConf, idmcore, router, strategies) {
               "error": error.message
             });
           });
+      }
+    }
+  );
 
+  // this call is only possible if the user can write to the password attribute (by default only admins can do that.)
+  //returns  or 401 or 403 if token is invalid or the old password doesn't match, 500 in case of unexpected situations
+  //curl -H "Content-type: application/json" -H "Authorization: bearer $TOKEN" -X PUT -d '{ "new_password":"secret22"}' 'http://localhost:3000/api/v1/user/alice!@!agile-secret/password'
+  router.route('/user/:user_update_id/password').put(
+    passport.authenticate('agile-bearer', {
+      session: false
+    }),
+    bodyParser.json(),
+    function (req, res) {
+      if (!req.body.new_password) {
+        res.statusCode = 400;
+        return res.json({
+          "error": "provide new_password"
+        });
+      } else {
+        var user = req.body;
+        var entity_type = "/user";
+        var user_update_id = req.params.user_update_id;
+        var auth_result = req.user;
+        updatePasswordWithoutCheck(idmcore, auth_result, user_update_id, entity_type, req.body.old_password, req.body.new_password)
+          .then(function (result) {
+            res.statusCode = 200;
+            res.json(result || {
+              "result": "password updated"
+            });
+          }).catch(function (error) {
+            console.log("error when updating user's password " + error);
+            res.statusCode = error.statusCode || 500;
+            res.json({
+              "error": error.message
+            });
+          });
       }
     }
   );
