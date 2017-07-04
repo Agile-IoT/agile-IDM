@@ -40,21 +40,16 @@ function RouterApi(tokenConf, idmcore, router) {
         }),
         bodyParser.json(),
         function (req, res) {
-            var entity = req.body;
             var entity_type = "/" + req.params.entity_type;
             var entity_id = req.params.entity_id;
-            if (!req.body.value) {
+            var policy_name = req.params.policy_name;
+            if (!req.body.policy) {
                 res.statusCode = 400;
                 res.json({
-                    "error": "provide value in the body"
+                    "error": "provide policy in the body"
                 });
             } else {
-                var policy_name = req.params.policy_name;
-                var policy = {};
-                policy[policy_name] = [];
-                policy[policy_name].push({target: req.body.value.target}); //TODO policy_name/self/FLOWS? --> Ask Daniel Schreckling ds@sec.uni-passau.de
-                policy[policy_name].push({source: req.body.value.source});
-                idmcore.setEntityPolicy(req.user, entity_id, entity_type, policy_name, req.body.value)
+                idmcore.setEntityPolicy(req.user, entity_id, entity_type, policy_name, req.body.policy)
                     .then(function (entity) {
                         res.json(entity);
                     }).catch(function (error) {
@@ -65,7 +60,6 @@ function RouterApi(tokenConf, idmcore, router) {
                     });
                 });
             }
-
         }
     );
 
