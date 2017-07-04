@@ -70,7 +70,7 @@ function RouterApi(tokenConf, idmcore, router) {
     );
 
     //returns 200 and the entity, or 401 or 403, in case of security issues, 422 in case a user is attempted to be created through this API, or 409 if entity already exists, 500 in case of unexpected situations
-    //curl -H "Content-type: application/json" -H "Authorization: bearer HeTxINCpXD0U6g27D7AIxc2CvfFNaZ" -XDELETE 'http://localhost:3000/api/v1/pap/sensor/mysensor/policy/name'
+    //curl -H "Content-type: application/json" -H "Authorization: bearer L1q8RdPhqhpcNJR9YRKpfVbie0fZxM31JRW9PPmCcvcLsatWrJBbawzfgDwACH9S" -XDELETE 'http://localhost:3000/api/v1/pap/sensor/mysensor/policy/name'
     router.route('/pap/:entity_type/:entity_id/policy/:policy_name').delete(
         passport.authenticate('agile-bearer', {
             session: false
@@ -80,19 +80,17 @@ function RouterApi(tokenConf, idmcore, router) {
             var entity_type = "/" + req.params.entity_type;
             var entity_id = req.params.entity_id;
             var policy_name = req.params.policy_name;
-            res.json({id: entity_id, type: entity_type, name: policy_name});
-          /* TODO: implement delete Entity Policy in agile-idm-core api
-           // check if policy is an attribute_level_policy
+            console.log(req.user, entity_id, entity_type, policy_name);
            idmcore.deleteEntityPolicy(req.user, entity_id, entity_type, policy_name)
-           .then(function (read) {
-           res.json(read);
-           }).catch(function (error) {
-           console.log("error when updating  entity attribute " + error);
-           res.statusCode = error.statusCode || 500;
-           res.json({
-           "error": error.message
+               .then(function (read) {
+                  res.json(read);
+               }).catch(function (error) {
+                   console.log("error when deleting policy " + error);
+                   res.statusCode = error.statusCode || 500;
+                   res.json({
+                   "error": error.message
+               });
            });
-           }); */
 
         }
     );
