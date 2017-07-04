@@ -66,15 +66,7 @@ function RouterApi(tokenConf, idmcore, router) {
       var entity_id = req.params.entity_id;
       idmcore.readEntity(req.user, entity_id, entity_type)
         .then(function (read) {
-          idmcore.getEntityPolicies(req.user, entity_id, entity_type).then(function(policyResult) {
-              var result = {};
-              for(var key in read) result[key] = read[key];
-              result.policies = {};
-              for(var key in policyResult) result.policies[key] = policyResult[key];
-              return result;
-          }).then(function(result) {
-              res.json(result);
-          });
+            res.json(read);
         }).catch(function (error) {
           res.statusCode = error.statusCode || 500;
           res.json({
@@ -199,41 +191,6 @@ function RouterApi(tokenConf, idmcore, router) {
 
     }
   );
-
-    router.route('/entity/:entity_type/:entity_id/policy/:policy_name').put(
-        passport.authenticate('agile-bearer', {
-            session: false
-        }),
-        bodyParser.json(),
-        function (req, res) {
-            var entity = req.body;
-            var entity_type = "/" + req.params.entity_type;
-            var entity_id = req.params.entity_id;
-            if (!req.body.value) {
-                res.statusCode = 400;
-                res.json({
-                    "error": "provide value in the body"
-                });
-            } else {
-                var policy_name = req.params.policy_name;
-                var policy = {};
-                policy[policy_name] = [];
-                policy[policy_name].push({target: req.body.value.target}); //TODO policy_name/self/FLOWS?
-                policy[policy_name].push({source: req.body.value.source});
-                idmcore.setEntityPolicy(req.user, entity_id, entity_type, policy_name, req.body.value)
-                    .then(function (entity) {
-                        res.json(entity);
-                    }).catch(function (error) {
-                    console.log("error when setting entity policy " + error);
-                    res.statusCode = error.statusCode || 500;
-                    res.json({
-                        "error": error.message
-                    });
-                });
-            }
-
-        }
-    );
 
   /*
       Query for entity attribute and types
