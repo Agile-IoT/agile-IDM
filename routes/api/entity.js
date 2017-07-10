@@ -66,7 +66,7 @@ function RouterApi(tokenConf, idmcore, router) {
       var entity_id = req.params.entity_id;
       idmcore.readEntity(req.user, entity_id, entity_type)
         .then(function (read) {
-            res.json(read);
+          res.json(read);
         }).catch(function (error) {
           res.statusCode = error.statusCode || 500;
           res.json({
