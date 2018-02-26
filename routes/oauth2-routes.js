@@ -100,11 +100,11 @@ function oauth2Router(tokenconf, entityStorageConf) {
         }
         console.log('client ' + JSON.stringify(client));
         console.log("same uri =" + (redirectURI === client.redirectURI) );
-//        if (redirectURI === client.redirectURI) {
+        if (redirectURI === client.redirectURI || process.env.DISABLE_DEVICE_IP_MATCH === "1"){
           return done(null, client, redirectURI);
-//        } else {
-//          return done(new Error("client URL doesn't match what was expected. $
-//        }
+        } else {
+          return done(new Error("client URL doesn't match what was expected. Provided: " + redirectURI + " expected " + client.redirectURI), null);
+        }
 
       });
     }, function (client, user, done) {
