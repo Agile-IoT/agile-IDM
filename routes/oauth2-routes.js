@@ -99,11 +99,13 @@ function oauth2Router(tokenconf, entityStorageConf) {
           return done(null, false);
         }
         console.log('client ' + JSON.stringify(client));
-        if (redirectURI === client.redirectURI) {
+        console.log("same uri =" + (redirectURI === client.redirectURI) );
+        if (redirectURI === client.redirectURI || process.env.DISABLE_DEVICE_IP_MATCH === "1"){
           return done(null, client, redirectURI);
         } else {
           return done(new Error("client URL doesn't match what was expected. Provided: " + redirectURI + " expected " + client.redirectURI), null);
         }
+
       });
     }, function (client, user, done) {
       console.log("authorization endpoint is called (either for implicit or authorization code) with client Id " + client.id + " for user id " + user.id + ". We always accept as long as client url matches");
